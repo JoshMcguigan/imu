@@ -1,4 +1,5 @@
 #![no_std]
+use libm::{sqrtf};
 
 #[derive(Clone, Copy)]
 #[repr(C)]
@@ -8,7 +9,7 @@ pub struct V {
     pub z: f32,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Q {
     pub q1: f32,
@@ -17,33 +18,113 @@ pub struct Q {
     pub q4: f32,
 }
 
+const DELTA_T: f32 = 0.001;
+const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcoded value of pi to match paper
+
+fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
+    let beta: f32 = sqrtf(3.0 / 4.0) * GYRO_MEAS_ERROR;
+
+    let half_seq_1 = 0.5 * q.q1;
+    let half_seq_2 = 0.5 * q.q2;
+    let half_seq_3 = 0.5 * q.q3;
+    let half_seq_4 = 0.5 * q.q4;
+    let two_seq_1 = 2.0 * q.q1;
+    let two_seq_2 = 2.0 * q.q2;
+    let two_seq_3 = 2.0 * q.q3;
+
+    let mut norm = sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+    a.x /= norm;
+    a.y /= norm;
+    a.z /= norm;
+
+    let f_1 = two_seq_2 * q.q4 - two_seq_1 * q.q3 - a.x;
+    let f_2 = two_seq_1 * q.q2 + two_seq_3 * q.q4 - a.y;
+    let f_3 = 1.0 - two_seq_2 * q.q2 - two_seq_3 * q.q3 - a.z;
+    let j_11_or_24 = two_seq_3;
+    let j_12_or_23 = 2.0 * q.q4;
+    let j_13_or_22 = two_seq_1;
+    let j_14_or_21 = two_seq_2;
+    let j_32 = 2.0 * j_14_or_21;
+    let j_33 = 2.0 * j_11_or_24;
+
+    let mut seq_hat_dot_1 = j_14_or_21 * f_2 - j_11_or_24 * f_1;
+    let mut seq_hat_dot_2 = j_12_or_23 * f_1 + j_13_or_22 * f_2 - j_32 * f_3;
+    let mut seq_hat_dot_3 = j_12_or_23 * f_2 - j_33 * f_3 - j_13_or_22 * f_1;
+    let mut seq_hat_dot_4 = j_14_or_21 * f_1 + j_11_or_24 * f_2;
+
+    norm = sqrtf(
+        seq_hat_dot_1 * seq_hat_dot_1 +
+        seq_hat_dot_2 * seq_hat_dot_2 +
+        seq_hat_dot_3 * seq_hat_dot_3 +
+        seq_hat_dot_4 * seq_hat_dot_4
+    );
+    seq_hat_dot_1 /= norm;
+    seq_hat_dot_2 /= norm;
+    seq_hat_dot_3 /= norm;
+    seq_hat_dot_4 /= norm;
+
+    let seq_dot_omega_1 = -half_seq_2 * w.x - half_seq_3 * w.y - half_seq_4 * w.z;
+    let seq_dot_omega_2 = half_seq_1 * w.x + half_seq_3 * w.z - half_seq_4 * w.y;
+    let seq_dot_omega_3 = half_seq_1 * w.y + half_seq_2 * w.z + half_seq_4 * w.x;
+    let seq_dot_omega_4 = half_seq_1 * w.z + half_seq_2 * w.y - half_seq_3 * w.x;
+
+    q.q1 += (seq_dot_omega_1 - (beta * seq_hat_dot_1)) * DELTA_T;
+    q.q2 += (seq_dot_omega_2 - (beta * seq_hat_dot_2)) * DELTA_T;
+    q.q3 += (seq_dot_omega_3 - (beta * seq_hat_dot_3)) * DELTA_T;
+    q.q4 += (seq_dot_omega_4 - (beta * seq_hat_dot_4)) * DELTA_T;
+
+    norm = sqrtf(q.q1 * q.q1 + q.q2 * q.q2 + q.q3 * q.q3 + q.q4 * q.q4);
+    q.q1 /= norm;
+    q.q2 /= norm;
+    q.q3 /= norm;
+    q.q4 /= norm;
+
+    q
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     extern {
-        fn filterUpdate(w: V, a: V, q: Q) -> Q;
+        fn filterUpdateC(w: V, a: V, q: Q) -> Q;
+    }
+
+    fn compare_float(a: f32, b: f32) -> bool {
+        // consider two NaN equal for purposes of comparing the output of the C algorithm
+        //     to the Rust algorithm
+        a.eq(&b) || (a.is_nan() && b.is_nan())
+    }
+
+    impl PartialEq<Q> for Q {
+        fn eq(&self, other: &Q) -> bool {
+            compare_float(self.q1, other.q1) &&
+            compare_float(self.q2, other.q2) &&
+            compare_float(self.q3, other.q3) &&
+            compare_float(self.q4, other.q4)
+        }
     }
 
     #[test]
     fn it_works() {
         let w = V {
-            x: 1.0,
+            x: 0.0,
             y: 0.0,
             z: 0.0,
         };
         let a = V {
-            x: 1.0,
+            x: 0.0,
             y: 0.0,
-            z: 0.0,
+            z: -1.0,
         };
         let q_init = Q {
             q1: 1.0,
-            q2: 2.0,
-            q3: 3.0,
-            q4: 4.0
+            q2: 0.0,
+            q3: 0.0,
+            q4: 0.0
         };
-        let result = unsafe { filterUpdate(w, a, q_init) };
-        assert_eq!(result.q1, 0.18239254);
+        let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone()) };
+        let result = filter_update(w, a, q_init);
+        assert_eq!(result_c, result);
     }
 }
