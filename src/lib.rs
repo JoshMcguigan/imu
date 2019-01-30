@@ -22,17 +22,11 @@ mod tests {
     use super::*;
 
     extern {
-        fn hello(c: i32) -> i32;
         fn filterUpdate(w: V, a: V, q: Q) -> Q;
     }
 
     #[test]
     fn it_works() {
-        assert_eq!(2 + unsafe { hello(2) }, 6);
-    }
-
-    #[test]
-    fn it_works2() {
         let w = V {
             x: 1.0,
             y: 0.0,
@@ -50,6 +44,6 @@ mod tests {
             q4: 4.0
         };
         let result = unsafe { filterUpdate(w, a, q_init) };
-        assert_eq!(result.q1, 1.0);
+        assert_eq!(result.q1, 0.18239254);
     }
 }
