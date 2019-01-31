@@ -1,7 +1,7 @@
 #![no_std]
 use libm::{sqrtf};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct V {
     pub x: f32,
@@ -85,6 +85,9 @@ fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::quickcheck;
+    use quickcheck::Gen;
+    use quickcheck::Arbitrary;
 
     extern {
         fn filterUpdateC(w: V, a: V, q: Q) -> Q;
@@ -93,7 +96,7 @@ mod tests {
     fn compare_float(a: f32, b: f32) -> bool {
         // consider two NaN equal for purposes of comparing the output of the C algorithm
         //     to the Rust algorithm
-        a.eq(&b) || (a.is_nan() && b.is_nan())
+        (a - b) < 0.001 || (a.is_nan() && b.is_nan())
     }
 
     impl PartialEq<Q> for Q {
@@ -102,6 +105,27 @@ mod tests {
             compare_float(self.q2, other.q2) &&
             compare_float(self.q3, other.q3) &&
             compare_float(self.q4, other.q4)
+        }
+    }
+
+    impl Arbitrary for V {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            V {
+                x: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                y: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                z: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+            }
+        }
+    }
+
+    impl Arbitrary for Q {
+        fn arbitrary<G: Gen>(g: &mut G) -> Self {
+            Q {
+                q1: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                q2: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                q3: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                q4: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+            }
         }
     }
 
@@ -126,5 +150,13 @@ mod tests {
         let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone()) };
         let result = filter_update(w, a, q_init);
         assert_eq!(result_c, result);
+    }
+
+    quickcheck!{
+        fn c_implementation_matches_rust(w: V, a: V, q_init: Q) -> bool {
+            let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone()) };
+            let result = filter_update(w, a, q_init);
+            result_c == result
+        }
     }
 }
