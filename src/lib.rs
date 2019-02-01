@@ -1,5 +1,5 @@
 #![no_std]
-use libm::{sqrtf};
+use libm::sqrtf;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -88,6 +88,7 @@ mod tests {
     use quickcheck::quickcheck;
     use quickcheck::Gen;
     use quickcheck::Arbitrary;
+    use rand::Rng;
 
     extern {
         fn filterUpdateC(w: V, a: V, q: Q) -> Q;
@@ -108,12 +109,16 @@ mod tests {
         }
     }
 
+    fn rand(g: &mut Gen) -> f32 {
+        g.gen_range(-1., 1.)
+    }
+
     impl Arbitrary for V {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             V {
-                x: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
-                y: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
-                z: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                x: rand(g),
+                y: rand(g),
+                z: rand(g),
             }
         }
     }
@@ -121,16 +126,16 @@ mod tests {
     impl Arbitrary for Q {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Q {
-                q1: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
-                q2: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
-                q3: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
-                q4: g.next_u32() as f32 / core::u32::MAX as f32 * 2. - 1.,
+                q1: rand(g),
+                q2: rand(g),
+                q3: rand(g),
+                q4: rand(g),
             }
         }
     }
 
     #[test]
-    fn it_works() {
+    fn simple_check() {
         let w = V {
             x: 0.0,
             y: 0.0,
