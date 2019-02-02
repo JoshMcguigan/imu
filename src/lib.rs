@@ -24,7 +24,7 @@ const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcode
 // w - gyroscope measurements in rad/s
 // a - accelerometer measurements
 // q - orientation quaternion elements initial conditions
-fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
+pub fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
     let beta: f32 = sqrtf(3.0 / 4.0) * GYRO_MEAS_ERROR;
 
     let half_seq_1 = 0.5 * q.q1;
