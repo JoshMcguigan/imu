@@ -21,6 +21,9 @@ pub struct Q {
 const DELTA_T: f32 = 0.001;
 const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcoded value of pi to match paper
 
+// w - gyroscope measurements in rad/s
+// a - accelerometer measurements
+// q - orientation quaternion elements initial conditions
 fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
     let beta: f32 = sqrtf(3.0 / 4.0) * GYRO_MEAS_ERROR;
 
@@ -54,9 +57,9 @@ fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
 
     norm = sqrtf(
         seq_hat_dot_1 * seq_hat_dot_1 +
-        seq_hat_dot_2 * seq_hat_dot_2 +
-        seq_hat_dot_3 * seq_hat_dot_3 +
-        seq_hat_dot_4 * seq_hat_dot_4
+            seq_hat_dot_2 * seq_hat_dot_2 +
+            seq_hat_dot_3 * seq_hat_dot_3 +
+            seq_hat_dot_4 * seq_hat_dot_4
     );
     seq_hat_dot_1 /= norm;
     seq_hat_dot_2 /= norm;
@@ -97,7 +100,7 @@ mod tests {
     fn compare_float(a: f32, b: f32) -> bool {
         // consider two NaN equal for purposes of comparing the output of the C algorithm
         //     to the Rust algorithm
-        (a - b) < 0.001 || (a.is_nan() && b.is_nan())
+        (a - b) < 0.01 || (a.is_nan() && b.is_nan())
     }
 
     impl PartialEq<Q> for Q {
@@ -109,16 +112,12 @@ mod tests {
         }
     }
 
-    fn rand(g: &mut Gen) -> f32 {
-        g.gen_range(-1., 1.)
-    }
-
     impl Arbitrary for V {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             V {
-                x: rand(g),
-                y: rand(g),
-                z: rand(g),
+                x: g.gen_range(-10., 10.),
+                y: g.gen_range(-10., 10.),
+                z: g.gen_range(-10., 10.),
             }
         }
     }
@@ -126,10 +125,10 @@ mod tests {
     impl Arbitrary for Q {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Q {
-                q1: rand(g),
-                q2: rand(g),
-                q3: rand(g),
-                q4: rand(g),
+                q1: g.gen_range(-1., 1.),
+                q2: g.gen_range(-1., 1.),
+                q3: g.gen_range(-1., 1.),
+                q4: g.gen_range(-1., 1.),
             }
         }
     }
