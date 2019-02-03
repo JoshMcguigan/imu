@@ -18,13 +18,13 @@ pub struct Q {
     pub q4: f32,
 }
 
-const DELTA_T: f32 = 0.001;
 const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcoded value of pi to match paper
 
 // w - gyroscope measurements in rad/s
 // a - accelerometer measurements
 // q - orientation quaternion elements initial conditions
-pub fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
+// delta_t - sampling period in seconds
+pub fn filter_update(w: V, mut a: V, mut q: Q, delta_t: f32) -> Q {
     let beta: f32 = sqrtf(3.0 / 4.0) * GYRO_MEAS_ERROR;
 
     let half_seq_1 = 0.5 * q.q1;
@@ -71,10 +71,10 @@ pub fn filter_update(w: V, mut a: V, mut q: Q) -> Q {
     let seq_dot_omega_3 = half_seq_1 * w.y + half_seq_2 * w.z + half_seq_4 * w.x;
     let seq_dot_omega_4 = half_seq_1 * w.z + half_seq_2 * w.y - half_seq_3 * w.x;
 
-    q.q1 += (seq_dot_omega_1 - (beta * seq_hat_dot_1)) * DELTA_T;
-    q.q2 += (seq_dot_omega_2 - (beta * seq_hat_dot_2)) * DELTA_T;
-    q.q3 += (seq_dot_omega_3 - (beta * seq_hat_dot_3)) * DELTA_T;
-    q.q4 += (seq_dot_omega_4 - (beta * seq_hat_dot_4)) * DELTA_T;
+    q.q1 += (seq_dot_omega_1 - (beta * seq_hat_dot_1)) * delta_t;
+    q.q2 += (seq_dot_omega_2 - (beta * seq_hat_dot_2)) * delta_t;
+    q.q3 += (seq_dot_omega_3 - (beta * seq_hat_dot_3)) * delta_t;
+    q.q4 += (seq_dot_omega_4 - (beta * seq_hat_dot_4)) * delta_t;
 
     norm = sqrtf(q.q1 * q.q1 + q.q2 * q.q2 + q.q3 * q.q3 + q.q4 * q.q4);
     q.q1 /= norm;
@@ -94,8 +94,10 @@ mod tests {
     use rand::Rng;
 
     extern {
-        fn filterUpdateC(w: V, a: V, q: Q) -> Q;
+        fn filterUpdateC(w: V, a: V, q: Q, delta_t: f32) -> Q;
     }
+
+    const DELTA_T: f32 = 0.001;
 
     fn compare_float(a: f32, b: f32) -> bool {
         // consider two NaN equal for purposes of comparing the output of the C algorithm
@@ -151,15 +153,15 @@ mod tests {
             q3: 0.0,
             q4: 0.0
         };
-        let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone()) };
-        let result = filter_update(w, a, q_init);
+        let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone(), DELTA_T) };
+        let result = filter_update(w, a, q_init, DELTA_T);
         assert_eq!(result_c, result);
     }
 
     quickcheck!{
         fn c_implementation_matches_rust(w: V, a: V, q_init: Q) -> bool {
-            let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone()) };
-            let result = filter_update(w, a, q_init);
+            let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone(), DELTA_T) };
+            let result = filter_update(w, a, q_init, DELTA_T);
             result_c == result
         }
     }

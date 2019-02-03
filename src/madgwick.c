@@ -4,7 +4,6 @@
 #include <math.h>
 
 // System constants
-#define deltat 0.001f // sampling period in seconds (shown as 1 ms)
 #define gyroMeasError 3.14159265358979f * (5.0f / 180.0f) // gyroscope measurement error in rad/s (shown as 5 deg/s)
 #define beta sqrt(3.0f / 4.0f) * gyroMeasError // compute beta
 
@@ -26,7 +25,7 @@ struct V {
 // a - accelerometer measurements
 // w - gyroscrope measurements in rad/s
 // q - orientation quaternion elements initial conditions
-struct Q filterUpdateC(struct V w, struct V a, struct Q q) {
+struct Q filterUpdateC(struct V w, struct V a, struct Q q, float deltat) {
     // Local system variables
     float norm; // vector norm
     float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3, SEqDot_omega_4; // quaternion derivative from gyroscopes elements
