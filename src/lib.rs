@@ -114,7 +114,7 @@ impl From<Q> for Euler {
         };
 
         // yaw (z-axis rotation)
-        let siny_cosp = 2.0 * (q.q1 * q.q3 + q.q2 * q.q3);
+        let siny_cosp = 2.0 * (q.q1 * q.q4 + q.q2 * q.q3);
         let cosy_cosp = 1.0 - 2.0 * (q.q3 * q.q3 + q.q4 * q.q4);
         let yaw = atan2(siny_cosp as f64, cosy_cosp as f64) as f32;
 
