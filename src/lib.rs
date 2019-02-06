@@ -97,27 +97,29 @@ fn copysign(x: f32, y: f32) -> f32 {
     if y > 0. { x } else { -x }
 }
 
-fn to_euler_angle(q: &Q) -> Euler {
-    // roll (x-axis rotation)
-    let sinr_cosp = 2.0 * (q.q1 * q.q2 + q.q3 * q.q4);
-    let cosr_cosp = 1.0 - 2.0 * (q.q2 * q.q2 + q.q3 * q.q3);
-    let roll = atan2(sinr_cosp as f64, cosr_cosp as f64) as f32;
+impl From<Q> for Euler {
+    fn from(q: Q) -> Self {
+        // roll (x-axis rotation)
+        let sinr_cosp = 2.0 * (q.q1 * q.q2 + q.q3 * q.q4);
+        let cosr_cosp = 1.0 - 2.0 * (q.q2 * q.q2 + q.q3 * q.q3);
+        let roll = atan2(sinr_cosp as f64, cosr_cosp as f64) as f32;
 
-    // pitch (y-axis rotation)
-    let sinp = 2.0 * (q.q1 * q.q3 - q.q4 * q.q1);
+        // pitch (y-axis rotation)
+        let sinp = 2.0 * (q.q1 * q.q3 - q.q4 * q.q1);
 
-    let pitch = if fabs(sinp as f64) >= 1. {
-        copysign(core::f32::consts::PI / 2., sinp)
-    } else {
-        asin(sinp as f64) as f32
-    };
+        let pitch = if fabs(sinp as f64) >= 1. {
+            copysign(core::f32::consts::PI / 2., sinp)
+        } else {
+            asin(sinp as f64) as f32
+        };
 
-    // yaw (z-axis rotation)
-    let siny_cosp = 2.0 * (q.q1 * q.q3 + q.q2 * q.q3);
-    let cosy_cosp = 1.0 - 2.0 * (q.q3 * q.q3 + q.q4 * q.q4);
-    let yaw = atan2(siny_cosp as f64, cosy_cosp as f64) as f32;
+        // yaw (z-axis rotation)
+        let siny_cosp = 2.0 * (q.q1 * q.q3 + q.q2 * q.q3);
+        let cosy_cosp = 1.0 - 2.0 * (q.q3 * q.q3 + q.q4 * q.q4);
+        let yaw = atan2(siny_cosp as f64, cosy_cosp as f64) as f32;
 
-    Euler { roll, pitch, yaw }
+        Euler { roll, pitch, yaw }
+    }
 }
 
 #[cfg(test)]
