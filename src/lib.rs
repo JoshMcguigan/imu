@@ -1,5 +1,7 @@
 #![no_std]
-use libm::{sqrtf, atan2, fabs, asin};
+use libm::sqrtf;
+
+mod euler;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -16,13 +18,6 @@ pub struct Q {
     pub q2: f32,
     pub q3: f32,
     pub q4: f32,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct Euler {
-    pub roll: f32,
-    pub pitch: f32,
-    pub yaw: f32,
 }
 
 const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcoded value of pi to match paper
@@ -90,36 +85,6 @@ pub fn filter_update(w: V, mut a: V, mut q: Q, delta_t: f32) -> Q {
     q.q4 /= norm;
 
     q
-}
-
-// returns the absolute value of x with the sign of y
-fn copysign(x: f32, y: f32) -> f32 {
-    if y > 0. { x } else { -x }
-}
-
-impl From<Q> for Euler {
-    fn from(q: Q) -> Self {
-        // roll (x-axis rotation)
-        let sinr_cosp = 2.0 * (q.q1 * q.q2 + q.q3 * q.q4);
-        let cosr_cosp = 1.0 - 2.0 * (q.q2 * q.q2 + q.q3 * q.q3);
-        let roll = atan2(sinr_cosp as f64, cosr_cosp as f64) as f32;
-
-        // pitch (y-axis rotation)
-        let sinp = 2.0 * (q.q1 * q.q3 - q.q4 * q.q1);
-
-        let pitch = if fabs(sinp as f64) >= 1. {
-            copysign(core::f32::consts::PI / 2., sinp)
-        } else {
-            asin(sinp as f64) as f32
-        };
-
-        // yaw (z-axis rotation)
-        let siny_cosp = 2.0 * (q.q1 * q.q4 + q.q2 * q.q3);
-        let cosy_cosp = 1.0 - 2.0 * (q.q3 * q.q3 + q.q4 * q.q4);
-        let yaw = atan2(siny_cosp as f64, cosy_cosp as f64) as f32;
-
-        Euler { roll, pitch, yaw }
-    }
 }
 
 #[cfg(test)]
@@ -201,15 +166,5 @@ mod tests {
             let result = filter_update(w, a, q_init, DELTA_T);
             result_c == result
         }
-    }
-
-    #[test]
-    fn copysign_pos() {
-        assert_eq!(2., copysign(2.,3.));
-    }
-
-    #[test]
-    fn copysign_neg() {
-        assert_eq!(-2., copysign(2.,-3.));
     }
 }
