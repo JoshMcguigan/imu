@@ -11,29 +11,30 @@ pub struct Euler {
 
 impl From<Q> for Euler {
     fn from(q: Q) -> Self {
-        let q1 = q.q1;
-        let q2 = q.q2;
-        let q3 = q.q3;
-        let q4 = q.q4;
-        let test = q2*q3 + q4*q1;
+        let w = q.w;
+        let x = q.x;
+        let y = q.y;
+        let z = q.z;
+
+        let test = x*y + z*w;
         if test > 0.499 { // singularity at north pole
-            let pitch = 2. * atan2f(q2,q1);
+            let pitch = 2. * atan2f(x,w);
             let yaw = PI/2.;
             let roll = 0.;
             return Euler { roll, pitch, yaw }
         }
         if test < -0.499 { // singularity at south pole
-            let pitch = -2. * atan2f(q2,q1);
+            let pitch = -2. * atan2f(x,w);
             let yaw = -PI/2.;
             let roll = 0.;
             return Euler { roll, pitch, yaw }
         }
-        let sqx = q2*q2;
-        let sqy = q3*q3;
-        let sqz = q4*q4;
-        let pitch = atan2f(2.*q3*q1-2.*q2*q4 , 1. - 2.*sqy - 2.*sqz);
-        let yaw = asinf((2.*test).into());
-        let roll = atan2f(2.*q2*q1-2.*q3*q4 , 1. - 2.*sqx - 2.*sqz);
+        let sqx = x*x;
+        let sqy = y*y;
+        let sqz = z*z;
+        let pitch = atan2f(2.*y*w-2.*x*z , 1. - 2.*sqy - 2.*sqz);
+        let yaw = asinf(2.*test);
+        let roll = atan2f(2.*x*w-2.*y*z , 1. - 2.*sqx - 2.*sqz);
 
         Euler { roll, pitch, yaw }
     }
@@ -58,10 +59,10 @@ mod tests {
     #[test]
     fn unit() {
         let q = Q {
-            q1: 1.0,
-            q2: 0.0,
-            q3: 0.0,
-            q4: 0.0
+            w: 1.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0
         };
 
         let expected_euler = Euler {
@@ -76,10 +77,10 @@ mod tests {
     #[test]
     fn roll() {
         let q = Q {
-            q1: 0.991,
-            q2: 0.131,
-            q3: 0.0,
-            q4: 0.0
+            w: 0.991,
+            x: 0.131,
+            y: 0.0,
+            z: 0.0
         };
 
         let expected_euler = Euler {
@@ -94,10 +95,10 @@ mod tests {
     #[test]
     fn pitch() {
         let q = Q {
-            q1: 0.991,
-            q2: 0.0,
-            q3: 0.131,
-            q4: 0.0
+            w: 0.991,
+            x: 0.0,
+            y: 0.131,
+            z: 0.0
         };
 
         let expected_euler = Euler {
@@ -112,10 +113,10 @@ mod tests {
     #[test]
     fn yaw() {
         let q = Q {
-            q1: 0.991,
-            q2: 0.0,
-            q3: 0.0,
-            q4: 0.131
+            w: 0.991,
+            x: 0.0,
+            y: 0.0,
+            z: 0.131
         };
 
         let expected_euler = Euler {
@@ -130,10 +131,10 @@ mod tests {
     #[test]
     fn all_positive() {
         let _q = Q {
-            q1: 0.996,
-            q2: 0.052,
-            q3: 0.047,
-            q4: 0.052
+            w: 0.996,
+            x: 0.052,
+            y: 0.047,
+            z: 0.052
         };
 
         let _expected_euler = Euler {

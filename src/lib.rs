@@ -2,6 +2,7 @@
 use libm::sqrtf;
 
 mod euler;
+pub use euler::Euler;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
@@ -14,10 +15,10 @@ pub struct V {
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Q {
-    pub q1: f32,
-    pub q2: f32,
-    pub q3: f32,
-    pub q4: f32,
+    pub w: f32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcoded value of pi to match paper
@@ -29,24 +30,24 @@ const GYRO_MEAS_ERROR: f32 = 3.14159265358979 * (5.0 / 180.0); // using hardcode
 pub fn filter_update(w: V, mut a: V, mut q: Q, delta_t: f32) -> Q {
     let beta: f32 = sqrtf(3.0 / 4.0) * GYRO_MEAS_ERROR;
 
-    let half_seq_1 = 0.5 * q.q1;
-    let half_seq_2 = 0.5 * q.q2;
-    let half_seq_3 = 0.5 * q.q3;
-    let half_seq_4 = 0.5 * q.q4;
-    let two_seq_1 = 2.0 * q.q1;
-    let two_seq_2 = 2.0 * q.q2;
-    let two_seq_3 = 2.0 * q.q3;
+    let half_seq_1 = 0.5 * q.w;
+    let half_seq_2 = 0.5 * q.x;
+    let half_seq_3 = 0.5 * q.y;
+    let half_seq_4 = 0.5 * q.z;
+    let two_seq_1 = 2.0 * q.w;
+    let two_seq_2 = 2.0 * q.x;
+    let two_seq_3 = 2.0 * q.y;
 
     let mut norm = sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
     a.x /= norm;
     a.y /= norm;
     a.z /= norm;
 
-    let f_1 = two_seq_2 * q.q4 - two_seq_1 * q.q3 - a.x;
-    let f_2 = two_seq_1 * q.q2 + two_seq_3 * q.q4 - a.y;
-    let f_3 = 1.0 - two_seq_2 * q.q2 - two_seq_3 * q.q3 - a.z;
+    let f_1 = two_seq_2 * q.z - two_seq_1 * q.y - a.x;
+    let f_2 = two_seq_1 * q.x + two_seq_3 * q.z - a.y;
+    let f_3 = 1.0 - two_seq_2 * q.x - two_seq_3 * q.y - a.z;
     let j_11_or_24 = two_seq_3;
-    let j_12_or_23 = 2.0 * q.q4;
+    let j_12_or_23 = 2.0 * q.z;
     let j_13_or_22 = two_seq_1;
     let j_14_or_21 = two_seq_2;
     let j_32 = 2.0 * j_14_or_21;
@@ -73,16 +74,16 @@ pub fn filter_update(w: V, mut a: V, mut q: Q, delta_t: f32) -> Q {
     let seq_dot_omega_3 = half_seq_1 * w.y + half_seq_2 * w.z + half_seq_4 * w.x;
     let seq_dot_omega_4 = half_seq_1 * w.z + half_seq_2 * w.y - half_seq_3 * w.x;
 
-    q.q1 += (seq_dot_omega_1 - (beta * seq_hat_dot_1)) * delta_t;
-    q.q2 += (seq_dot_omega_2 - (beta * seq_hat_dot_2)) * delta_t;
-    q.q3 += (seq_dot_omega_3 - (beta * seq_hat_dot_3)) * delta_t;
-    q.q4 += (seq_dot_omega_4 - (beta * seq_hat_dot_4)) * delta_t;
+    q.w += (seq_dot_omega_1 - (beta * seq_hat_dot_1)) * delta_t;
+    q.x += (seq_dot_omega_2 - (beta * seq_hat_dot_2)) * delta_t;
+    q.y += (seq_dot_omega_3 - (beta * seq_hat_dot_3)) * delta_t;
+    q.z += (seq_dot_omega_4 - (beta * seq_hat_dot_4)) * delta_t;
 
-    norm = sqrtf(q.q1 * q.q1 + q.q2 * q.q2 + q.q3 * q.q3 + q.q4 * q.q4);
-    q.q1 /= norm;
-    q.q2 /= norm;
-    q.q3 /= norm;
-    q.q4 /= norm;
+    norm = sqrtf(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    q.w /= norm;
+    q.x /= norm;
+    q.y /= norm;
+    q.z /= norm;
 
     q
 }
@@ -109,10 +110,10 @@ mod tests {
 
     impl PartialEq<Q> for Q {
         fn eq(&self, other: &Q) -> bool {
-            compare_float(self.q1, other.q1) &&
-            compare_float(self.q2, other.q2) &&
-            compare_float(self.q3, other.q3) &&
-            compare_float(self.q4, other.q4)
+            compare_float(self.w, other.w) &&
+            compare_float(self.x, other.x) &&
+            compare_float(self.y, other.y) &&
+            compare_float(self.z, other.z)
         }
     }
 
@@ -129,10 +130,10 @@ mod tests {
     impl Arbitrary for Q {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             Q {
-                q1: g.gen_range(-1., 1.),
-                q2: g.gen_range(-1., 1.),
-                q3: g.gen_range(-1., 1.),
-                q4: g.gen_range(-1., 1.),
+                w: g.gen_range(-1., 1.),
+                x: g.gen_range(-1., 1.),
+                y: g.gen_range(-1., 1.),
+                z: g.gen_range(-1., 1.),
             }
         }
     }
@@ -150,10 +151,10 @@ mod tests {
             z: -1.0,
         };
         let q_init = Q {
-            q1: 1.0,
-            q2: 0.0,
-            q3: 0.0,
-            q4: 0.0
+            w: 1.0,
+            x: 0.0,
+            y: 0.0,
+            z: 0.0
         };
         let result_c = unsafe { filterUpdateC(w.clone(), a.clone(), q_init.clone(), DELTA_T) };
         let result = filter_update(w, a, q_init, DELTA_T);
