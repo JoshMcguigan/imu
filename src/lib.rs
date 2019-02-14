@@ -2,7 +2,7 @@
 use libm::sqrtf;
 
 mod euler;
-pub use euler::Euler;
+pub use self::euler::Euler;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
